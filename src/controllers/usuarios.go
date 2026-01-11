@@ -9,9 +9,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
-//CriarUsuario é responsável por criar um novo usuário
+// CriarUsuario é responsável por criar um novo usuário
 func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	corpoRequisicao, erro := io.ReadAll(r.Body)
 	if erro != nil {
@@ -23,6 +24,11 @@ func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	var usuario modelos.Usuario
 	if erro = json.Unmarshal(corpoRequisicao, &usuario); erro != nil {
 		respostas.ERRO(w, http.StatusBadRequest, erro)
+		return
+	}
+
+	if erro = usuario.Preparar(); erro != nil {
+		respostas.ERRO(w, http.StatusBadGateway, erro)
 		return
 	}
 
@@ -42,28 +48,43 @@ func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respostas.JSON(w, http.StatusCreated, usuario)
-	
+
 }
 
-//BuscarUsuarios é responsável por buscar todos os usuários
+// BuscarUsuarios é responsável por buscar todos os usuários
 func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Buscando usuários"))
-	fmt.Println("Buscando usuários")
+	nomeOuNick := strings.ToLower(r.URL.Query().Get("usuario"))
+
+	db, erro := banco.Conectar()
+	if erro != nil {
+		respostas.ERRO(w, http.StatusInternalServerError, erro)
+		return
+	}
+	defer db.Close()
+
+	repositorio := repositorios.NovoRepositorioDeUsuarios(db)
+	usuarios, erro := repositorio.Buscar(nomeOuNick)
+	if erro != nil{
+		respostas.ERRO(w, http.StatusInternalServerError, erro)
+		return
+	}
+
+	respostas.JSON(w, http.StatusOK, usuarios)
 }
 
-//BuscarUsuario é responsável por buscar um usuário específico
+// BuscarUsuario é responsável por buscar um usuário específico
 func BuscarUsuario(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Buscando usuário"))
 	fmt.Println("Buscando usuário")
 }
 
-//AtualizarUsuario é responsável por atualizar um usuário específico
+// AtualizarUsuario é responsável por atualizar um usuário específico
 func AtualizarUsuario(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Atualizando usuário"))
 	fmt.Println("Atualizando usuário")
 }
 
-//DeletarUsuario é responsável por deletar um usuário específico
+// DeletarUsuario é responsável por deletar um usuário específico
 func DeletarUsuario(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Deletando usuário")
 }
