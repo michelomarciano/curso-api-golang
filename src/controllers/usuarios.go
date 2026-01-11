@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 // CriarUsuario é responsável por criar um novo usuário
@@ -64,7 +67,7 @@ func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
 
 	repositorio := repositorios.NovoRepositorioDeUsuarios(db)
 	usuarios, erro := repositorio.Buscar(nomeOuNick)
-	if erro != nil{
+	if erro != nil {
 		respostas.ERRO(w, http.StatusInternalServerError, erro)
 		return
 	}
@@ -74,8 +77,28 @@ func BuscarUsuarios(w http.ResponseWriter, r *http.Request) {
 
 // BuscarUsuario é responsável por buscar um usuário específico
 func BuscarUsuario(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Buscando usuário"))
-	fmt.Println("Buscando usuário")
+	parametros := mux.Vars(r)
+
+	usuarioID, erro := strconv.ParseUint(parametros["id"], 10, 64)
+	if erro != nil {
+		respostas.ERRO(w, http.StatusBadRequest, erro)
+		return
+	}
+	db, erro := banco.Conectar()
+	if erro != nil {
+		respostas.ERRO(w, http.StatusInternalServerError, erro)
+		return
+	}
+	defer db.Close()
+
+	repositorio := repositorios.NovoRepositorioDeUsuarios(db)
+	usuario, erro := repositorio.BuscarPorId(usuarioID)
+	if erro != nil {
+		respostas.ERRO(w, http.StatusInternalServerError, erro)
+		return
+	}
+
+	respostas.JSON(w, http.StatusOK, usuario)
 }
 
 // AtualizarUsuario é responsável por atualizar um usuário específico
